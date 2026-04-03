@@ -1,3 +1,7 @@
 [submodule "kokoro-tts"]
 	path = kokoro-tts
 	url = https://github.com/mishandledservitor/kokoro-tts.git
+
+[submodule "whisper-stt"]
+	path = whisper-stt
+	url = https://github.com/mishandledservitor/whisper-stt.git
