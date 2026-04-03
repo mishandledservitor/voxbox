@@ -17,6 +17,10 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+INBOX_DIR = os.path.join(SCRIPT_DIR, "whisper-stt", "inbox")
+SUPPORTED_AUDIO = {"mp3", "mp4", "wav", "m4a", "ogg", "flac",
+                   "aac", "webm", "mkv", "mov", "avi", "opus"}
+
 TOOLS = {
     "tts": {
         "name": "Kokoro TTS",
@@ -48,12 +52,23 @@ def run_tool(key, args):
     return subprocess.call([tool["launcher"]] + args)
 
 
+def count_inbox():
+    """Count audio files in the whisper-stt inbox."""
+    if not os.path.isdir(INBOX_DIR):
+        return 0
+    return sum(1 for f in os.listdir(INBOX_DIR)
+               if os.path.splitext(f)[1].lower().lstrip(".") in SUPPORTED_AUDIO)
+
+
 def print_status():
     print("\n  Tool Status:")
     for key, tool in TOOLS.items():
         installed = check_tool(key)
         icon = "✅" if installed else "❌"
         print(f"    {icon} {tool['name']:<16} — {tool['desc']}")
+    inbox_count = count_inbox()
+    if inbox_count:
+        print(f"\n  📬 {inbox_count} file(s) in whisper-stt/inbox/ — use /inbox to transcribe")
     print()
 
 
@@ -69,6 +84,7 @@ def interactive_mode():
     print("    /stt              — launch Whisper STT (interactive)")
     print('    /tts "text"       — quick text-to-speech')
     print("    /stt file.mp3     — quick transcription")
+    print("    /inbox            — transcribe all files in whisper-stt/inbox/")
     print("    /status           — check installed tools")
     print("    /help             — show this help")
     print("    /quit             — exit\n")
@@ -100,6 +116,8 @@ def interactive_mode():
         elif cmd == "/stt":
             args = arg.split() if arg else []
             run_tool("stt", args)
+        elif cmd == "/inbox":
+            run_tool("stt", ["--inbox"])
         elif cmd == "/status":
             print_status()
         elif cmd == "/help":
@@ -108,6 +126,7 @@ def interactive_mode():
             print("    /stt              — launch Whisper STT (interactive)")
             print('    /tts "text"       — quick text-to-speech')
             print("    /stt file.mp3     — quick transcription")
+            print("    /inbox            — transcribe all files in whisper-stt/inbox/")
             print("    /status           — check installed tools")
             print("    /help             — show this help")
             print("    /quit             — exit\n")
