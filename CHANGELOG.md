@@ -11,6 +11,20 @@ For changes to individual tools, see:
 
 ---
 
+## [1.3.0] — 2026-04-16
+
+### Added
+- **`voxbox_gui.py`** — Tkinter GUI as the new default front door. Four screens: mode picker → file picker (with options) → processing (overall + per-file progress, ETA, live log, cancel) → done summary
+- Root-level `inbox/`, `output/`, `processed/` folders for GUI use (per-tool inboxes still work for CLI)
+- `./voxbox` (no args) now launches the GUI; `./voxbox --cli` brings back the old text-mode menu
+- `--gui` flag on `voxbox_cli.py` to launch the GUI explicitly
+- Worker thread + queue model for non-blocking subprocess execution; parses existing tool progress format (`60% 2m30s ~1m40s left`) for live progress bars
+- Per-mode option panels: voice + speed for TTS, model + format for STT, model + speakers + format for Diarize
+
+### Changed
+- README structure — GUI is documented first; CLI demoted to "advanced"
+- `.gitignore` — exclude root `inbox/*`, `output/*`, `processed/*` (with `.gitkeep` exemptions)
+
 ## [1.2.0] — 2026-04-16
 
 ### Added

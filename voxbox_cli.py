@@ -4,7 +4,8 @@ VoxBox — Local Voice Toolkit (TTS + STT + Diarization)
 Unified launcher for Kokoro TTS, Whisper STT, and Whisper Diarize.
 
 Usage:
-    python voxbox_cli.py                              # Interactive menu
+    python voxbox_cli.py                              # Launch GUI (default)
+    python voxbox_cli.py --cli                        # Old text-mode interactive menu
     python voxbox_cli.py tts "Hello world"            # Quick TTS
     python voxbox_cli.py stt recording.mp3            # Quick STT
     python voxbox_cli.py diarize interview.mp3        # Quick STT + speaker labels
@@ -149,9 +150,24 @@ def _print_help():
     print("    /quit                — exit\n")
 
 
+def launch_gui():
+    """Launch voxbox_gui.py in this same Python interpreter."""
+    gui_path = os.path.join(SCRIPT_DIR, "voxbox_gui.py")
+    if not os.path.isfile(gui_path):
+        print(f"⚠  GUI script not found at {gui_path}")
+        print("   Falling back to text-mode interactive menu...")
+        interactive_mode()
+        return
+    try:
+        sys.exit(subprocess.call([sys.executable, gui_path]))
+    except KeyboardInterrupt:
+        sys.exit(0)
+
+
 def main():
     if len(sys.argv) < 2:
-        interactive_mode()
+        # Default: launch GUI
+        launch_gui()
         return
 
     cmd = sys.argv[1].lower()
@@ -160,13 +176,18 @@ def main():
         print_status()
     elif cmd == "--help" or cmd == "-h":
         print(__doc__)
+    elif cmd == "--cli":
+        interactive_mode()
+    elif cmd == "--gui":
+        launch_gui()
     elif cmd in ("tts", "stt", "diarize"):
         extra_args = sys.argv[2:]
         sys.exit(run_tool(cmd, extra_args))
     else:
         print(f"⚠  Unknown command: {cmd}")
         print("   Usage: voxbox [tts|stt|diarize] [args...]")
-        print("   Or just: ./voxbox  (for interactive mode)")
+        print("   Or:    voxbox            (launches GUI)")
+        print("   Or:    voxbox --cli      (text-mode interactive menu)")
         sys.exit(1)
 
 

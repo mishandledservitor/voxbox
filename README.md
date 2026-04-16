@@ -2,7 +2,7 @@
 
 > Text-to-speech, speech-to-text, and speaker diarization — fully offline. No cloud, no API keys.
 
-**Version 1.2.0** | [Changelog](CHANGELOG.md)
+**Version 1.3.0** | [Changelog](CHANGELOG.md)
 
 ```
 voxbox/
@@ -20,9 +20,10 @@ The two core tools (`kokoro-tts`, `whisper-stt`) stay PyTorch-free. The optional
 - [Quick Start](#quick-start)
 - [Setup](#setup)
 - [Usage](#usage)
-  - [Unified Launcher](#unified-launcher)
+  - [GUI](#gui-recommended)
+  - [Unified Launcher (CLI)](#unified-launcher-cli)
   - [Direct Tool Access](#direct-tool-access)
-  - [Interactive Menu](#interactive-menu)
+  - [Interactive Menu (CLI)](#interactive-menu-cli)
   - [Inbox Workflow (Batch Transcription)](#inbox-workflow-batch-transcription)
 - [Kokoro TTS](#kokoro-tts)
 - [Whisper STT](#whisper-stt)
@@ -51,11 +52,14 @@ chmod +x setup_voxbox.sh
 Then:
 
 ```bash
-./voxbox                          # Interactive menu
-./voxbox tts "Hello, world!"      # Speak text aloud
-./voxbox stt recording.mp3        # Transcribe audio
-./voxbox diarize interview.mp3    # Transcribe + label speakers (optional tool)
+./voxbox                          # Launch GUI (default)
+./voxbox tts "Hello, world!"      # Speak text aloud (CLI)
+./voxbox stt recording.mp3        # Transcribe audio (CLI)
+./voxbox diarize interview.mp3    # Transcribe + label speakers (CLI)
+./voxbox --cli                    # Old text-mode interactive menu
 ```
+
+The GUI is the easiest way to use voxbox: pick a mode, drop files in `inbox/`, watch the progress bar.
 
 ---
 
@@ -100,11 +104,28 @@ This shows whether each tool is installed and ready.
 
 ## Usage
 
-### Unified Launcher
+### GUI (recommended)
 
 ```bash
-# Interactive menu
-./voxbox
+./voxbox          # launches the GUI
+```
+
+The GUI has four screens:
+
+1. **Mode picker** — Text-to-Speech, Transcribe, or Transcribe + Identify Speakers
+2. **File picker** — scans the root `inbox/`, lets you select which files to process and tweak options (voice, model, speaker count, output format)
+3. **Processing** — overall progress bar (file X of Y), per-file progress bar (parsed from tool output), elapsed/ETA timing, live subprocess log, Cancel button
+4. **Done** — per-file success/failure summary, buttons to open the output folder or process more
+
+Drop input files into `inbox/` (text for TTS, audio for STT/Diarize). Outputs land in `output/`. Originals move to `processed/` after success.
+
+The GUI uses Tkinter (built into Python — no extra install needed). Per-tool inboxes (`whisper-stt/inbox/`, `whisper-diarize/inbox/`) still work for CLI users.
+
+### Unified Launcher (CLI)
+
+```bash
+# Old text-mode interactive menu
+./voxbox --cli
 
 # Text-to-speech
 ./voxbox tts "Hello, this is VoxBox!"
@@ -151,9 +172,9 @@ Each tool works standalone without the parent launcher:
 ./whisper-diarize/whisper-diarize --list-models
 ```
 
-### Interactive Menu
+### Interactive Menu (CLI)
 
-Launch `./voxbox` with no arguments to enter the interactive menu:
+Launch `./voxbox --cli` to enter the text-mode interactive menu:
 
 ```
 Commands:
@@ -262,13 +283,18 @@ See [whisper-diarize/README.md](whisper-diarize/README.md) for the HF token setu
 
 ```
 voxbox/                          # Parent repo (unified launcher)
-├── voxbox_cli.py                # Main CLI / interactive menu
+├── voxbox_gui.py                # Tkinter GUI (default front door)
+├── voxbox_cli.py                # CLI dispatcher (subcommands + --cli menu)
 ├── voxbox                       # Generated bash launcher
 ├── setup_voxbox.sh              # Master installer
 ├── uninstall_voxbox.sh          # Master uninstaller
 ├── README.md
 ├── CHANGELOG.md
 ├── VERSION
+│
+├── inbox/                       # GUI input drop folder (text or audio)
+├── output/                      # GUI output folder
+├── processed/                   # Originals moved here after GUI success
 │
 ├── kokoro-tts/                  # Git submodule — text-to-speech
 │   ├── kokoro_tts_local.py      # TTS engine (438 lines)
