@@ -102,7 +102,7 @@ DIARIZE_STAGES = [
     ("Loading alignment model",      45,  "loading aligner..."),
     ("Alignment loaded",             50,  "aligner loaded"),
     ("[2/3]",                        52,  "aligning timestamps..."),
-    ("[3/3]",                        78,  "diarizing speakers..."),
+    ("[3/3]",                        78,  "diarizing speakers (slow — ~5–10× audio length on CPU)..."),
     ("speaker(s) in",                97,  "finalizing..."),
     ("Done in",                     100,  "done"),
 ]
@@ -337,6 +337,9 @@ class VoxBoxGUI:
         self.start_time = None
         self.file_durations = []  # completed file elapsed times for ETA
         self.results = []
+        # Tracks (label, started_at) for the current pipeline stage. Used to
+        # show "in <stage> for 5m 12s" so silent stages still tick visibly.
+        self.current_stage = None
 
         # Try to use a slightly nicer ttk theme on macOS
         style = ttk.Style()
@@ -654,6 +657,19 @@ class VoxBoxGUI:
         else:
             eta_str = "estimating..."
         self.timing_label.config(text=f"Elapsed: {fmt_time(elapsed)}    ETA: {eta_str}")
+        # If we're in a named stage with no per-line progress (diarize), keep
+        # the per-file status ticking so the user can see the stage isn't
+        # wedged — silent stages would otherwise look frozen for minutes.
+        if self.current_stage is not None:
+            label, started_at = self.current_stage
+            in_stage = time.time() - started_at
+            # Read current pct off the bar rather than re-stashing it.
+            try:
+                pct = int(self.file_bar.cget("value"))
+            except Exception:
+                pct = 0
+            self.file_status.config(
+                text=f"{pct}%  {label}  ({fmt_time(in_stage)})")
         # Reschedule
         self._timer_after = self.root.after(500, self._tick_timer)
 
@@ -689,6 +705,7 @@ class VoxBoxGUI:
             self.overall_status.config(text=f"{idx} / {total}")
             self.file_bar.config(value=0)
             self.file_status.config(text="starting...")
+            self.current_stage = None
             self._append_log(f"\n── [{idx + 1}/{total}] {name} ──")
         elif kind == "log":
             self._append_log(msg[1])
@@ -696,9 +713,11 @@ class VoxBoxGUI:
             _, pct, eta = msg
             self.file_bar.config(value=pct)
             self.file_status.config(text=f"{pct}%  ~{eta} left")
+            self.current_stage = None
         elif kind == "stage":
             _, pct, label = msg
             self.file_bar.config(value=pct)
+            self.current_stage = (label, time.time())
             self.file_status.config(text=f"{pct}%  {label}")
         elif kind == "file_done":
             _, idx, total, success, elapsed = msg

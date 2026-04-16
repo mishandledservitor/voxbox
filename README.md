@@ -436,7 +436,11 @@ Fixed in 1.3.1. If you're on an older voxbox, pull the latest. The fix forces th
 
 ### Diarize takes much longer than expected
 
-Diarize on Intel CPU with the `medium` model runs at roughly 3–5× audio duration (1 hour of audio = 3–5 hours of processing). Pinning the speaker count via the GUI's "Fixed:" speaker option (or `--min-speakers / --max-speakers` on the CLI) is the single biggest accuracy + speed win. See [whisper-diarize/README.md](whisper-diarize/README.md#performance-on-intel-mac-cpu-only) for the full performance table.
+Diarize on Intel CPU runs at roughly 4–10× audio duration end-to-end. Verified baseline on 2018 Intel 15" MacBook Pro / macOS Sequoia: 2m 10s audio + `tiny` model + 4 speakers = **9m 05s total** (RTF 4.17×, of which the diarize step alone is 7m 54s). The `medium` model is realistically 20–40 min for the same file. Pinning the speaker count via the GUI's "Fixed:" speaker option (or `--min-speakers / --max-speakers` on the CLI) is the single biggest accuracy + speed win. See [whisper-diarize/README.md](whisper-diarize/README.md#performance-on-intel-mac-cpu-only) and [whisper-diarize/CHANGELOG.md](whisper-diarize/CHANGELOG.md) for details.
+
+### Diarize hangs at 0% CPU forever (or segfaults at language detection)
+
+Both symptoms come from the same root cause: torch + faster-whisper + pyannote on Intel macOS doesn't tolerate multi-threaded execution. Fixed in `whisper-diarize` 1.0.2 by forcing `OMP_NUM_THREADS=1` (and friends) at module import. **Do not override this** — `OMP_NUM_THREADS > 1` segfaults during faster-whisper's language detection. Single-threaded is slow, but on this stack it's the only configuration that works at all.
 
 ---
 
