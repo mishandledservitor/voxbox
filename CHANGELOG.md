@@ -11,6 +11,20 @@ For changes to individual tools, see:
 
 ---
 
+## [1.3.1] — 2026-04-16
+
+### Fixed
+- **GUI: live progress for `whisper-diarize`.** The diarize subprocess was buffering its stdout (no TTY), so stage prints (`Loading model...`, `[1/3] Transcribing...`, etc.) sat in the buffer for many minutes before flushing — leaving the GUI stuck at "starting..." with no log output. Setting `PYTHONUNBUFFERED=1` in the subprocess environment makes output stream in real time.
+- **GUI: progress bar now moves during diarize.** `whisper-diarize` prints stage markers, not percentages, so the existing `PROGRESS_RE` never matched and the bar stayed at 0% for the entire run. Added a stage-marker → progress map (loading 5–8% → transcribing 12% → aligning 52% → diarizing 78% → finalizing 97% → done 100%) with friendly stage labels.
+
+### Added
+- LICENSE file (MIT) at the repo root with upstream attribution.
+- License footers on all submodule READMEs.
+
+### Changed
+- `.gitignore` expanded to cover IDE/editor files (`.vscode/`, `.idea/`, swap files), local env files (`.env`, `.envrc`), and Python build artifacts.
+- All three submodules bumped: kokoro-tts → 1.0.2, whisper-stt → 1.1.1, whisper-diarize → 1.0.1 (each picks up LICENSE + .gitignore polish; whisper-diarize also documents its dependency-fix history).
+
 ## [1.3.0] — 2026-04-16
 
 ### Added

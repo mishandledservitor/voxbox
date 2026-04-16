@@ -89,6 +89,32 @@ FORMAT_EXT = {"text": "txt", "srt": "srt", "vtt": "vtt", "json": "json"}
 #   ┃████████░░░░┃ 60% 2m30s ~1m40s left
 PROGRESS_RE = re.compile(r"(\d{1,3})%\s+\S+\s+~?(\S+)\s+left")
 
+# whisper-diarize doesn't print percentages — just stage markers. Map them to
+# coarse progress so the bar visibly moves through the pipeline. Order matters
+# (longest match first wins).
+DIARIZE_STAGES = [
+    ("Loading WhisperX model",        2,  "loading model..."),
+    ("ASR loaded",                    5,  "model loaded"),
+    ("Loading diarization pipeline",  6,  "loading diarizer..."),
+    ("Diarization loaded",            8,  "diarizer loaded"),
+    ("Audio duration:",              10,  "audio loaded"),
+    ("[1/3]",                        12,  "transcribing..."),
+    ("Loading alignment model",      45,  "loading aligner..."),
+    ("Alignment loaded",             50,  "aligner loaded"),
+    ("[2/3]",                        52,  "aligning timestamps..."),
+    ("[3/3]",                        78,  "diarizing speakers..."),
+    ("speaker(s) in",                97,  "finalizing..."),
+    ("Done in",                     100,  "done"),
+]
+
+
+def parse_diarize_stage(line):
+    """Return (pct, label) if the line matches a known diarize stage marker."""
+    for marker, pct, label in DIARIZE_STAGES:
+        if marker in line:
+            return pct, label
+    return None
+
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 def ensure_dirs():
@@ -203,6 +229,11 @@ class Worker(threading.Thread):
             t0 = time.time()
             success = False
             err_tail = []
+            # Force unbuffered output from the child Python so we see stage
+            # prints in real time instead of one big dump at the end.
+            env = os.environ.copy()
+            env["PYTHONUNBUFFERED"] = "1"
+
             try:
                 self.proc = subprocess.Popen(
                     cmd,
@@ -210,6 +241,7 @@ class Worker(threading.Thread):
                     stderr=subprocess.STDOUT,
                     text=True,
                     bufsize=1,
+                    env=env,
                     # Start in a new process group so we can kill child threads cleanly
                     preexec_fn=os.setsid if os.name != "nt" else None,
                 )
@@ -232,6 +264,11 @@ class Worker(threading.Thread):
                             pct = int(m.group(1))
                             eta = m.group(2)
                             self.q.put(("progress", pct, eta))
+                        elif self.mode == "diarize":
+                            stage = parse_diarize_stage(piece)
+                            if stage:
+                                pct, label = stage
+                                self.q.put(("stage", pct, label))
                         self.q.put(("log", piece))
                         err_tail.append(piece)
                         if len(err_tail) > 30:
@@ -659,6 +696,10 @@ class VoxBoxGUI:
             _, pct, eta = msg
             self.file_bar.config(value=pct)
             self.file_status.config(text=f"{pct}%  ~{eta} left")
+        elif kind == "stage":
+            _, pct, label = msg
+            self.file_bar.config(value=pct)
+            self.file_status.config(text=f"{pct}%  {label}")
         elif kind == "file_done":
             _, idx, total, success, elapsed = msg
             self.overall_bar.config(value=idx + 1)

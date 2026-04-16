@@ -2,7 +2,7 @@
 
 > Text-to-speech, speech-to-text, and speaker diarization — fully offline. No cloud, no API keys.
 
-**Version 1.3.0** | [Changelog](CHANGELOG.md)
+**Version 1.3.1** | [Changelog](CHANGELOG.md) | [License](LICENSE)
 
 ```
 voxbox/
@@ -37,6 +37,7 @@ The two core tools (`kokoro-tts`, `whisper-stt`) stay PyTorch-free. The optional
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
+- [Versioning](#versioning)
 
 ---
 
@@ -305,15 +306,26 @@ voxbox/                          # Parent repo (unified launcher)
 │   ├── voices-v1.0.bin          # Voice data (downloaded at setup)
 │   └── venv/                    # Isolated Python environment
 │
-└── whisper-stt/                 # Git submodule — speech-to-text
-    ├── whisper_stt_local.py     # STT engine (614 lines)
-    ├── whisper                  # Generated bash launcher
-    ├── setup_whisper.sh         # Installer
-    ├── uninstall_whisper.sh     # Uninstaller
+├── whisper-stt/                 # Git submodule — speech-to-text
+│   ├── whisper_stt_local.py     # STT engine (614 lines)
+│   ├── whisper                  # Generated bash launcher
+│   ├── setup_whisper.sh         # Installer
+│   ├── uninstall_whisper.sh     # Uninstaller
+│   ├── inbox/                   # Drop audio files here for batch processing
+│   ├── output/                  # Transcripts saved here
+│   ├── processed/               # Originals moved here after transcription
+│   └── venv/                    # Isolated Python environment
+│
+└── whisper-diarize/             # Git submodule — STT + speaker diarization (optional)
+    ├── whisper_diarize_local.py # WhisperX + pyannote pipeline (684 lines)
+    ├── whisper-diarize          # Generated bash launcher
+    ├── setup_whisper_diarize.sh # Installer (Python 3.10, PyTorch 2.2.2, pyannote)
+    ├── uninstall_whisper_diarize.sh
+    ├── .hf_token                # HuggingFace token (chmod 600, not tracked)
     ├── inbox/                   # Drop audio files here for batch processing
-    ├── output/                  # Transcripts saved here
-    ├── processed/               # Originals moved here after transcription
-    └── venv/                    # Isolated Python environment
+    ├── output/                  # Diarized transcripts saved here
+    ├── processed/               # Originals moved here after success
+    └── venv/                    # Isolated Python 3.10 environment (~2.5 GB)
 ```
 
 ### Design Decisions
@@ -322,10 +334,10 @@ voxbox/                          # Parent repo (unified launcher)
 
 | Repo | Purpose | Backend |
 |------|---------|---------|
-| [voxbox](https://github.com/mishandledservitor/voxbox) | Unified launcher and docs | Python (subprocess) |
+| [voxbox](https://github.com/mishandledservitor/voxbox) | Unified launcher (GUI + CLI) and docs | Python stdlib + Tkinter |
 | [kokoro-tts](https://github.com/mishandledservitor/kokoro-tts) | Text-to-Speech | kokoro-onnx (ONNX Runtime) |
 | [whisper-stt](https://github.com/mishandledservitor/whisper-stt) | Speech-to-Text | faster-whisper (CTranslate2) |
-| whisper-diarize | STT + Speaker Diarization | WhisperX + pyannote 3.1 (PyTorch 2.2.2) |
+| [whisper-diarize](https://github.com/mishandledservitor/whisper-diarize) | STT + Speaker Diarization | WhisperX + pyannote 3.1 (PyTorch 2.2.2) |
 
 **No shared dependencies.** Each tool has its own Python venv. No version conflicts, no "it works on my machine" issues. You can update or remove one tool without affecting the others.
 
@@ -416,6 +428,15 @@ Allow Terminal (or your terminal app) microphone access in **System Preferences 
 See the troubleshooting sections in each tool's README:
 - [Kokoro TTS Troubleshooting](kokoro-tts/README.md#troubleshooting)
 - [Whisper STT Troubleshooting](whisper-stt/README.md#troubleshooting)
+- [Whisper Diarize Troubleshooting](whisper-diarize/README.md#troubleshooting)
+
+### GUI hangs at "starting..." with no log output (diarize)
+
+Fixed in 1.3.1. If you're on an older voxbox, pull the latest. The fix forces the diarize subprocess to run unbuffered (`PYTHONUNBUFFERED=1`) so stage prints stream live instead of buffering until the end.
+
+### Diarize takes much longer than expected
+
+Diarize on Intel CPU with the `medium` model runs at roughly 3–5× audio duration (1 hour of audio = 3–5 hours of processing). Pinning the speaker count via the GUI's "Fixed:" speaker option (or `--min-speakers / --max-speakers` on the CLI) is the single biggest accuracy + speed win. See [whisper-diarize/README.md](whisper-diarize/README.md#performance-on-intel-mac-cpu-only) for the full performance table.
 
 ---
 
@@ -440,4 +461,21 @@ git push
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE) for the full text and upstream attribution.
+
+Each submodule carries its own LICENSE file with attribution for its specific dependencies (Kokoro-82M, Faster-Whisper, WhisperX, pyannote.audio, PyTorch, etc.). The pyannote diarization model is released under a Creative Commons license that requires attribution.
+
+---
+
+## Versioning
+
+This project uses [Semantic Versioning](https://semver.org/). Each repo (parent + 3 submodules) is versioned independently:
+
+| Repo | Current | Changelog |
+|------|---------|-----------|
+| voxbox | [VERSION](VERSION) | [CHANGELOG.md](CHANGELOG.md) |
+| kokoro-tts | [VERSION](kokoro-tts/VERSION) | [CHANGELOG.md](kokoro-tts/CHANGELOG.md) |
+| whisper-stt | [VERSION](whisper-stt/VERSION) | [CHANGELOG.md](whisper-stt/CHANGELOG.md) |
+| whisper-diarize | [VERSION](whisper-diarize/VERSION) | [CHANGELOG.md](whisper-diarize/CHANGELOG.md) |
+
+Parent-repo bumps generally happen alongside changes that affect the launcher (`voxbox_cli.py`, `voxbox_gui.py`, `setup_voxbox.sh`) or cross-tool documentation. Submodule-only changes don't necessarily trigger a parent bump — but the parent's submodule pointer is updated to track the new commit.
