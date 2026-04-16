@@ -1,14 +1,17 @@
 # VoxBox — Local Voice Toolkit
 
-> Text-to-speech and speech-to-text, fully offline. No cloud, no API keys, no PyTorch.
+> Text-to-speech, speech-to-text, and speaker diarization — fully offline. No cloud, no API keys.
 
-**Version 1.1.0** | [Changelog](CHANGELOG.md)
+**Version 1.2.0** | [Changelog](CHANGELOG.md)
 
 ```
 voxbox/
-├── kokoro-tts/    Text-to-Speech  (Kokoro-82M, ONNX Runtime)
-└── whisper-stt/   Speech-to-Text  (Faster-Whisper, CTranslate2)
+├── kokoro-tts/        Text-to-Speech            (Kokoro-82M, ONNX Runtime)
+├── whisper-stt/       Speech-to-Text            (Faster-Whisper, CTranslate2)
+└── whisper-diarize/   STT + Speaker Diarization (WhisperX + pyannote 3.1, optional)
 ```
+
+The two core tools (`kokoro-tts`, `whisper-stt`) stay PyTorch-free. The optional `whisper-diarize` tool pulls in PyTorch 2.2.2 — it's the only practical path to high-quality speaker diarization on Intel Macs.
 
 ---
 
@@ -23,6 +26,7 @@ voxbox/
   - [Inbox Workflow (Batch Transcription)](#inbox-workflow-batch-transcription)
 - [Kokoro TTS](#kokoro-tts)
 - [Whisper STT](#whisper-stt)
+- [Whisper Diarize](#whisper-diarize)
 - [Architecture](#architecture)
   - [Project Structure](#project-structure)
   - [Design Decisions](#design-decisions)
@@ -47,9 +51,10 @@ chmod +x setup_voxbox.sh
 Then:
 
 ```bash
-./voxbox                         # Interactive menu
-./voxbox tts "Hello, world!"    # Speak text aloud
-./voxbox stt recording.mp3      # Transcribe audio
+./voxbox                          # Interactive menu
+./voxbox tts "Hello, world!"      # Speak text aloud
+./voxbox stt recording.mp3        # Transcribe audio
+./voxbox diarize interview.mp3    # Transcribe + label speakers (optional tool)
 ```
 
 ---
@@ -62,6 +67,7 @@ Then:
 - **Python 3.10+** (installed automatically if missing)
 - **Homebrew** (installed automatically if missing)
 - **~800 MB disk space** for default models (Kokoro ~300 MB, Whisper small ~460 MB)
+- **+~4 GB if installing Whisper Diarize** (PyTorch + Whisper medium + pyannote)
 - Internet connection for initial setup only — everything runs offline after
 
 ### Installation
@@ -73,11 +79,12 @@ chmod +x setup_voxbox.sh
 ./setup_voxbox.sh
 ```
 
-The setup script handles everything in three steps:
+The setup script handles everything in four steps:
 
-1. **Initializes git submodules** — pulls kokoro-tts and whisper-stt repos
+1. **Initializes git submodules** — pulls kokoro-tts, whisper-stt, and whisper-diarize repos
 2. **Sets up Kokoro TTS** — Python venv, kokoro-onnx, ffmpeg, model download (~300 MB)
 3. **Sets up Whisper STT** — Python venv, faster-whisper, model download (~460 MB)
+4. **Sets up Whisper Diarize** *(opt-in)* — Python venv, PyTorch 2.2.2, pyannote 3.1, Whisper medium (~4 GB total). You'll be prompted for a Hugging Face token.
 
 Each tool is fully self-contained in its own directory with its own Python virtual environment.
 
@@ -111,6 +118,11 @@ This shows whether each tool is installed and ready.
 ./voxbox stt -o subtitles.srt podcast.mp3
 ./voxbox stt -l ja japanese-audio.wav
 
+# Speech-to-text with speaker labels (requires whisper-diarize setup)
+./voxbox diarize interview.mp3
+./voxbox diarize --min-speakers 2 --max-speakers 2 -o call.srt call.mp3
+./voxbox diarize -m large-v3 podcast.mp3
+
 # Check tool status
 ./voxbox --status
 ```
@@ -131,6 +143,12 @@ Each tool works standalone without the parent launcher:
 ./whisper-stt/whisper --record          # record from mic
 ./whisper-stt/whisper --inbox           # batch transcribe inbox
 ./whisper-stt/whisper --list-models     # see all 10 models
+
+# Whisper Diarize (STT + speaker labels)
+./whisper-diarize/whisper-diarize interview.mp3
+./whisper-diarize/whisper-diarize       # interactive mode
+./whisper-diarize/whisper-diarize --inbox       # batch process inbox
+./whisper-diarize/whisper-diarize --list-models
 ```
 
 ### Interactive Menu
@@ -139,14 +157,17 @@ Launch `./voxbox` with no arguments to enter the interactive menu:
 
 ```
 Commands:
-  /tts              — launch Kokoro TTS (interactive)
-  /stt              — launch Whisper STT (interactive)
-  /tts "text"       — quick text-to-speech
-  /stt file.mp3     — quick transcription
-  /inbox            — transcribe all files in whisper-stt/inbox/
-  /status           — check installed tools
-  /help             — show commands
-  /quit             — exit
+  /tts                 — launch Kokoro TTS (interactive)
+  /stt                 — launch Whisper STT (interactive)
+  /diarize             — launch Whisper Diarize (interactive)
+  /tts "text"          — quick text-to-speech
+  /stt file.mp3        — quick transcription
+  /diarize file.mp3    — quick transcription with speaker labels
+  /inbox               — transcribe all files in whisper-stt/inbox/
+  /diarize-inbox       — diarize all files in whisper-diarize/inbox/
+  /status              — check installed tools
+  /help                — show commands
+  /quit                — exit
 ```
 
 ### Inbox Workflow (Batch Transcription)
@@ -212,6 +233,29 @@ See [whisper-stt/README.md](whisper-stt/README.md) for all models, CLI options, 
 
 ---
 
+## Whisper Diarize
+
+Speech-to-text **with speaker identification**, using [WhisperX](https://github.com/m-bain/whisperX) (Whisper + wav2vec2 alignment) and [pyannote 3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) diarization. **Optional** — install only if you need it.
+
+| Feature | Details |
+|---------|---------|
+| Models | 6 sizes from tiny (75 MB) to large-v3 (2.9 GB) |
+| Default model | `medium` (1.5 GB) — sweet spot for long-form audio quality |
+| Diarization | pyannote 3.1 (speaker turns + clustering) |
+| Alignment | wav2vec2 word-level timestamps for crisp speaker boundaries |
+| Speaker count | Auto, or fix with `--min-speakers / --max-speakers` |
+| Output formats | Speaker-grouped text, SRT/VTT (with `[SPEAKER_XX]` tags), JSON |
+| Backend | PyTorch 2.2.2 (CPU, Intel-Mac compatible) |
+| Auth | Free Hugging Face token required (gated model) |
+
+**Why this submodule breaks the no-PyTorch rule:** pyannote.audio is the only open-source diarization library at this quality level, and it requires PyTorch. The submodule is opt-in during setup so the core voxbox install stays lean.
+
+**Performance on Intel CPU:** budget ~3–5× audio duration with the `medium` model. Pinning the speaker count improves both accuracy and speed substantially.
+
+See [whisper-diarize/README.md](whisper-diarize/README.md) for the HF token setup, model details, all CLI options, and troubleshooting.
+
+---
+
 ## Architecture
 
 ### Project Structure
@@ -248,17 +292,18 @@ voxbox/                          # Parent repo (unified launcher)
 
 ### Design Decisions
 
-**Three independent repos.** The parent (`voxbox`) coordinates two child repos as git submodules. Each child works completely standalone — you can clone and use `kokoro-tts` or `whisper-stt` independently.
+**Independent repos.** The parent (`voxbox`) coordinates child repos as git submodules. Each child works completely standalone — you can clone and use any of them independently.
 
 | Repo | Purpose | Backend |
 |------|---------|---------|
 | [voxbox](https://github.com/mishandledservitor/voxbox) | Unified launcher and docs | Python (subprocess) |
 | [kokoro-tts](https://github.com/mishandledservitor/kokoro-tts) | Text-to-Speech | kokoro-onnx (ONNX Runtime) |
 | [whisper-stt](https://github.com/mishandledservitor/whisper-stt) | Speech-to-Text | faster-whisper (CTranslate2) |
+| whisper-diarize | STT + Speaker Diarization | WhisperX + pyannote 3.1 (PyTorch 2.2.2) |
 
-**No shared dependencies.** Each tool has its own Python venv. No version conflicts, no "it works on my machine" issues. You can update or remove one tool without affecting the other.
+**No shared dependencies.** Each tool has its own Python venv. No version conflicts, no "it works on my machine" issues. You can update or remove one tool without affecting the others.
 
-**No PyTorch.** Both tools use lightweight inference-only backends. This matters on Intel Macs where PyTorch 2.4+ dropped support, and everywhere else where a 2 GB PyTorch install is overkill for inference.
+**No PyTorch in the core tools.** `kokoro-tts` and `whisper-stt` use lightweight inference-only backends. This matters on Intel Macs where PyTorch 2.4+ dropped support, and everywhere else where a 2 GB PyTorch install is overkill for inference. `whisper-diarize` is the deliberate exception — pyannote.audio has no comparable PyTorch-free alternative — and it's opt-in during setup.
 
 **Fully offline.** After initial setup (model downloads), everything runs locally. No API keys, no cloud, no telemetry.
 
@@ -277,6 +322,12 @@ voxbox/                          # Parent repo (unified launcher)
 - `sounddevice` — microphone recording
 - `soundfile` — audio file I/O
 - `numpy` — array processing
+
+**Whisper Diarize:**
+- `whisperx` — Whisper + wav2vec2 alignment + diarization orchestration
+- `pyannote.audio` 3.1.1 — speaker diarization
+- `torch` / `torchaudio` 2.2.2 — pinned for Intel Mac compatibility
+- `ffmpeg` (system) — audio decoding
 
 ---
 

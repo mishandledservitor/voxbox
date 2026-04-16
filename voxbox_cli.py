@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-VoxBox — Local Voice Toolkit (TTS + STT)
-Unified launcher for Kokoro TTS and Whisper STT.
+VoxBox — Local Voice Toolkit (TTS + STT + Diarization)
+Unified launcher for Kokoro TTS, Whisper STT, and Whisper Diarize.
 
 Usage:
     python voxbox_cli.py                              # Interactive menu
     python voxbox_cli.py tts "Hello world"            # Quick TTS
     python voxbox_cli.py stt recording.mp3            # Quick STT
+    python voxbox_cli.py diarize interview.mp3        # Quick STT + speaker labels
     python voxbox_cli.py tts --list-voices            # Pass-through to kokoro
     python voxbox_cli.py stt --list-models            # Pass-through to whisper
 """
@@ -18,6 +19,7 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 INBOX_DIR = os.path.join(SCRIPT_DIR, "whisper-stt", "inbox")
+DIARIZE_INBOX_DIR = os.path.join(SCRIPT_DIR, "whisper-diarize", "inbox")
 SUPPORTED_AUDIO = {"mp3", "mp4", "wav", "m4a", "ogg", "flac",
                    "aac", "webm", "mkv", "mov", "avi", "opus"}
 
@@ -33,6 +35,12 @@ TOOLS = {
         "launcher": os.path.join(SCRIPT_DIR, "whisper-stt", "whisper"),
         "setup": os.path.join(SCRIPT_DIR, "whisper-stt", "setup_whisper.sh"),
         "desc": "Speech-to-Text (Faster-Whisper, CTranslate2)",
+    },
+    "diarize": {
+        "name": "Whisper Diarize",
+        "launcher": os.path.join(SCRIPT_DIR, "whisper-diarize", "whisper-diarize"),
+        "setup": os.path.join(SCRIPT_DIR, "whisper-diarize", "setup_whisper_diarize.sh"),
+        "desc": "STT + speaker diarization (WhisperX + pyannote 3.1)",
     },
 }
 
@@ -52,11 +60,11 @@ def run_tool(key, args):
     return subprocess.call([tool["launcher"]] + args)
 
 
-def count_inbox():
-    """Count audio files in the whisper-stt inbox."""
-    if not os.path.isdir(INBOX_DIR):
+def count_inbox(inbox_dir=INBOX_DIR):
+    """Count audio files in the given inbox directory."""
+    if not os.path.isdir(inbox_dir):
         return 0
-    return sum(1 for f in os.listdir(INBOX_DIR)
+    return sum(1 for f in os.listdir(inbox_dir)
                if os.path.splitext(f)[1].lower().lstrip(".") in SUPPORTED_AUDIO)
 
 
@@ -66,9 +74,12 @@ def print_status():
         installed = check_tool(key)
         icon = "✅" if installed else "❌"
         print(f"    {icon} {tool['name']:<16} — {tool['desc']}")
-    inbox_count = count_inbox()
-    if inbox_count:
-        print(f"\n  📬 {inbox_count} file(s) in whisper-stt/inbox/ — use /inbox to transcribe")
+    stt_count = count_inbox(INBOX_DIR)
+    diarize_count = count_inbox(DIARIZE_INBOX_DIR)
+    if stt_count:
+        print(f"\n  📬 {stt_count} file(s) in whisper-stt/inbox/ — use /inbox to transcribe")
+    if diarize_count:
+        print(f"  📬 {diarize_count} file(s) in whisper-diarize/inbox/ — use /diarize-inbox to process")
     print()
 
 
@@ -79,15 +90,7 @@ def interactive_mode():
 
     print_status()
 
-    print("  Commands:")
-    print("    /tts              — launch Kokoro TTS (interactive)")
-    print("    /stt              — launch Whisper STT (interactive)")
-    print('    /tts "text"       — quick text-to-speech')
-    print("    /stt file.mp3     — quick transcription")
-    print("    /inbox            — transcribe all files in whisper-stt/inbox/")
-    print("    /status           — check installed tools")
-    print("    /help             — show this help")
-    print("    /quit             — exit\n")
+    _print_help()
 
     while True:
         try:
@@ -100,7 +103,7 @@ def interactive_mode():
             continue
 
         if not text.startswith("/"):
-            print("  ⚠  Use /tts or /stt to get started. Type /help for commands.")
+            print("  ⚠  Use /tts, /stt, or /diarize to get started. Type /help for commands.")
             continue
 
         parts = text.split(maxsplit=1)
@@ -116,22 +119,34 @@ def interactive_mode():
         elif cmd == "/stt":
             args = arg.split() if arg else []
             run_tool("stt", args)
+        elif cmd == "/diarize":
+            args = arg.split() if arg else []
+            run_tool("diarize", args)
         elif cmd == "/inbox":
             run_tool("stt", ["--inbox"])
+        elif cmd == "/diarize-inbox":
+            run_tool("diarize", ["--inbox"])
         elif cmd == "/status":
             print_status()
         elif cmd == "/help":
-            print("\n  Commands:")
-            print("    /tts              — launch Kokoro TTS (interactive)")
-            print("    /stt              — launch Whisper STT (interactive)")
-            print('    /tts "text"       — quick text-to-speech')
-            print("    /stt file.mp3     — quick transcription")
-            print("    /inbox            — transcribe all files in whisper-stt/inbox/")
-            print("    /status           — check installed tools")
-            print("    /help             — show this help")
-            print("    /quit             — exit\n")
+            _print_help()
         else:
             print(f"  ⚠  Unknown command: {cmd}. Type /help for commands.")
+
+
+def _print_help():
+    print("  Commands:")
+    print("    /tts                 — launch Kokoro TTS (interactive)")
+    print("    /stt                 — launch Whisper STT (interactive)")
+    print("    /diarize             — launch Whisper Diarize (interactive)")
+    print('    /tts "text"          — quick text-to-speech')
+    print("    /stt file.mp3        — quick transcription")
+    print("    /diarize file.mp3    — quick transcription with speaker labels")
+    print("    /inbox               — transcribe all files in whisper-stt/inbox/")
+    print("    /diarize-inbox       — diarize all files in whisper-diarize/inbox/")
+    print("    /status              — check installed tools")
+    print("    /help                — show this help")
+    print("    /quit                — exit\n")
 
 
 def main():
@@ -145,12 +160,12 @@ def main():
         print_status()
     elif cmd == "--help" or cmd == "-h":
         print(__doc__)
-    elif cmd in ("tts", "stt"):
+    elif cmd in ("tts", "stt", "diarize"):
         extra_args = sys.argv[2:]
         sys.exit(run_tool(cmd, extra_args))
     else:
         print(f"⚠  Unknown command: {cmd}")
-        print("   Usage: voxbox [tts|stt] [args...]")
+        print("   Usage: voxbox [tts|stt|diarize] [args...]")
         print("   Or just: ./voxbox  (for interactive mode)")
         sys.exit(1)
 

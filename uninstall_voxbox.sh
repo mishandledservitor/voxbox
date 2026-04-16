@@ -42,7 +42,22 @@ if [ -f "$INSTALL_DIR/whisper-stt/uninstall_whisper.sh" ]; then
     fi
 fi
 
-# ── 3. VoxBox launcher ──────────────────────────────────────────────────────
+# ── 3. Whisper Diarize ──────────────────────────────────────────────────────
+echo ""
+if [ -f "$INSTALL_DIR/whisper-diarize/uninstall_whisper_diarize.sh" ]; then
+    echo "👥  Whisper Diarize"
+    read -p "   Run Whisper Diarize uninstaller? [y/N] " c
+    if [[ "$c" =~ ^[Yy]$ ]]; then
+        chmod +x "$INSTALL_DIR/whisper-diarize/uninstall_whisper_diarize.sh"
+        cd "$INSTALL_DIR/whisper-diarize"
+        ./uninstall_whisper_diarize.sh
+        cd "$INSTALL_DIR"
+    else
+        echo "   ⏭  Skipped"
+    fi
+fi
+
+# ── 4. VoxBox launcher ──────────────────────────────────────────────────────
 echo ""
 if [ -f "$INSTALL_DIR/voxbox" ]; then
     echo "🚀 VoxBox launcher"

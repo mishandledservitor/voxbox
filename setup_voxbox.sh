@@ -12,14 +12,14 @@ cd "$INSTALL_DIR"
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
 echo "║       🔊  VOXBOX — LOCAL VOICE TOOLKIT SETUP  🔊         ║"
-echo "║       Kokoro TTS + Whisper STT, fully offline            ║"
+echo "║       Kokoro TTS + Whisper STT (+ optional Diarize)      ║"
 echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
 echo "   Install directory: $INSTALL_DIR"
 echo ""
 
 # ── 1. Init submodules ──────────────────────────────────────────────────────
-echo "🔍 Step 1/3: Initializing submodules..."
+echo "🔍 Step 1/4: Initializing submodules..."
 if [ -f "$INSTALL_DIR/.gitmodules" ]; then
     git submodule update --init --recursive
     echo "   ✅ Submodules ready"
@@ -38,7 +38,7 @@ fi
 # ── 2. Set up Kokoro TTS ───────────────────────────────────────────────────
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo "🎙  Step 2/3: Setting up Kokoro TTS..."
+echo "🎙  Step 2/4: Setting up Kokoro TTS..."
 echo "═══════════════════════════════════════════════════════════"
 echo ""
 
@@ -54,7 +54,7 @@ fi
 # ── 3. Set up Whisper STT ──────────────────────────────────────────────────
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo "🎤  Step 3/3: Setting up Whisper STT..."
+echo "🎤  Step 3/4: Setting up Whisper STT..."
 echo "═══════════════════════════════════════════════════════════"
 echo ""
 
@@ -65,6 +65,32 @@ if [ -f "$INSTALL_DIR/whisper-stt/setup_whisper.sh" ]; then
     cd "$INSTALL_DIR"
 else
     echo "   ⚠  whisper-stt/setup_whisper.sh not found — skipping"
+fi
+
+# ── 4. Optionally set up Whisper Diarize ───────────────────────────────────
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo "👥  Step 4/4: Whisper Diarize (optional, ~4 GB disk)"
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+echo "   Adds speaker identification using WhisperX + pyannote 3.1."
+echo "   Requires PyTorch (~2 GB) + Whisper medium (~1.5 GB) + a free"
+echo "   Hugging Face account & token."
+echo ""
+
+if [ -f "$INSTALL_DIR/whisper-diarize/setup_whisper_diarize.sh" ]; then
+    read -p "   Set up Whisper Diarize now? [y/N] " c
+    if [[ "$c" =~ ^[Yy]$ ]]; then
+        chmod +x "$INSTALL_DIR/whisper-diarize/setup_whisper_diarize.sh"
+        cd "$INSTALL_DIR/whisper-diarize"
+        ./setup_whisper_diarize.sh
+        cd "$INSTALL_DIR"
+    else
+        echo "   ⏭  Skipped — run later with:"
+        echo "      ./whisper-diarize/setup_whisper_diarize.sh"
+    fi
+else
+    echo "   ⚠  whisper-diarize/setup_whisper_diarize.sh not found — skipping"
 fi
 
 # ── Create launcher ─────────────────────────────────────────────────────────
@@ -86,10 +112,12 @@ echo "║  Unified launcher:                                       ║"
 echo "║    ./voxbox                    Interactive menu           ║"
 echo "║    ./voxbox tts \"Hello!\"       Quick text-to-speech      ║"
 echo "║    ./voxbox stt recording.mp3  Quick transcription       ║"
+echo "║    ./voxbox diarize call.mp3   Transcribe + label        ║"
 echo "║                                                          ║"
 echo "║  Or use each tool directly:                              ║"
 echo "║    ./kokoro-tts/kokoro \"Hello!\"                          ║"
 echo "║    ./whisper-stt/whisper recording.mp3                   ║"
+echo "║    ./whisper-diarize/whisper-diarize interview.mp3       ║"
 echo "║                                                          ║"
 echo "║  Everything runs offline after setup.                    ║"
 echo "║                                                          ║"
