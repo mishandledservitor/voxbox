@@ -5,3 +5,6 @@
 [submodule "whisper-stt"]
 	path = whisper-stt
 	url = https://github.com/mishandledservitor/whisper-stt.git
+[submodule "whisper-diarize"]
+	path = whisper-diarize
+	url = https://github.com/mishandledservitor/whisper-diarize.git
