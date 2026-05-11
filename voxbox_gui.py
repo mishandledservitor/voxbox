@@ -401,8 +401,7 @@ class VoxBoxGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("VoxBox")
-        self.root.geometry("760x600")
-        self.root.minsize(640, 480)
+        self.root.minsize(700, 560)
 
         # State
         self.mode = None
@@ -423,7 +422,7 @@ class VoxBoxGUI:
             style.theme_use("aqua")
         except tk.TclError:
             pass
-        style.configure("Mode.TButton", font=("Helvetica", 14), padding=12)
+        style.configure("Mode.TButton", font=("Helvetica", 12), padding=(12, 10))
         style.configure("Header.TLabel", font=("Helvetica", 16, "bold"))
         style.configure("Sub.TLabel", font=("Helvetica", 11), foreground="#666666")
 
@@ -460,16 +459,18 @@ class VoxBoxGUI:
             btn_text = f"{m['emoji']}  {m['label']}"
             if not installed:
                 btn_text += "   (not installed)"
-            btn = ttk.Button(
+            btn = tk.Button(
                 self.container, text=btn_text,
-                style="Mode.TButton", width=46,
+                font=("Helvetica", 13),
+                padx=20, pady=12,
+                anchor="center",
                 command=lambda k=key: self.show_file_screen(k),
             )
             if not installed:
-                btn.state(["disabled"])
-            btn.pack(pady=6)
+                btn.config(state=tk.DISABLED)
+            btn.pack(pady=4, fill=tk.X, padx=60)
             ttk.Label(self.container, text=m["description"],
-                      style="Sub.TLabel").pack(pady=(0, 12))
+                      style="Sub.TLabel").pack(pady=(0, 8))
 
         # Footer
         footer = ttk.Frame(self.container)
@@ -478,7 +479,7 @@ class VoxBoxGUI:
                    command=lambda: open_in_finder(INBOX_DIR)).pack(side=tk.LEFT)
         ttk.Button(footer, text="📂 Open output folder",
                    command=lambda: open_in_finder(OUTPUT_DIR)).pack(side=tk.LEFT, padx=8)
-        ttk.Label(footer, text="v1.3.0", style="Sub.TLabel").pack(side=tk.RIGHT)
+        ttk.Label(footer, text="v1.4.0", style="Sub.TLabel").pack(side=tk.RIGHT)
 
     # ── Screen 2: File selection ────────────────────────────────────────────
 
@@ -924,6 +925,11 @@ class VoxBoxGUI:
 def main():
     root = tk.Tk()
     VoxBoxGUI(root)
+    # Size window to fit content at whatever DPI/font scale the system uses
+    root.update_idletasks()
+    w = max(760, root.winfo_reqwidth() + 40)
+    h = max(600, root.winfo_reqheight() + 40)
+    root.geometry(f"{w}x{h}")
     root.mainloop()
 
 
