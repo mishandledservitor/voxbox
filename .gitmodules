@@ -11,3 +11,6 @@
 [submodule "speech-to-text"]
 	path = speech-to-text
 	url = https://github.com/mishandledservitor/speech-to-text.git
+[submodule "assemblyai-stt"]
+	path = assemblyai-stt
+	url = https://github.com/mishandledservitor/assemblyai-stt.git
