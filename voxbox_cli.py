@@ -43,6 +43,18 @@ TOOLS = {
         "setup": os.path.join(SCRIPT_DIR, "whisper-diarize", "setup_whisper_diarize.sh"),
         "desc": "STT + speaker diarization (WhisperX + pyannote 3.1)",
     },
+    "aai": {
+        "name": "AssemblyAI STT",
+        "launcher": os.path.join(SCRIPT_DIR, "assemblyai-stt", "assemblyai"),
+        "setup": os.path.join(SCRIPT_DIR, "assemblyai-stt", "setup_assemblyai.sh"),
+        "desc": "Cloud STT (AssemblyAI API) — optional speaker labels",
+    },
+    "el11": {
+        "name": "ElevenLabs STT",
+        "launcher": os.path.join(SCRIPT_DIR, "speech-to-text", "elevenlabs"),
+        "setup": os.path.join(SCRIPT_DIR, "speech-to-text", "setup_elevenlabs.sh"),
+        "desc": "Cloud STT (ElevenLabs Scribe) — highest quality in the suite",
+    },
 }
 
 
@@ -123,6 +135,12 @@ def interactive_mode():
         elif cmd == "/diarize":
             args = arg.split() if arg else []
             run_tool("diarize", args)
+        elif cmd == "/aai":
+            args = arg.split() if arg else []
+            run_tool("aai", args)
+        elif cmd == "/el11":
+            args = arg.split() if arg else []
+            run_tool("el11", args)
         elif cmd == "/inbox":
             run_tool("stt", ["--inbox"])
         elif cmd == "/diarize-inbox":
@@ -140,6 +158,8 @@ def _print_help():
     print("    /tts                 — launch Kokoro TTS (interactive)")
     print("    /stt                 — launch Whisper STT (interactive)")
     print("    /diarize             — launch Whisper Diarize (interactive)")
+    print("    /aai file.mp3        — transcribe via AssemblyAI (cloud)")
+    print("    /el11 file.mp3       — transcribe via ElevenLabs Scribe (highest quality)")
     print('    /tts "text"          — quick text-to-speech')
     print("    /stt file.mp3        — quick transcription")
     print("    /diarize file.mp3    — quick transcription with speaker labels")
@@ -180,12 +200,12 @@ def main():
         interactive_mode()
     elif cmd == "--gui":
         launch_gui()
-    elif cmd in ("tts", "stt", "diarize"):
+    elif cmd in ("tts", "stt", "diarize", "aai", "el11"):
         extra_args = sys.argv[2:]
         sys.exit(run_tool(cmd, extra_args))
     else:
         print(f"⚠  Unknown command: {cmd}")
-        print("   Usage: voxbox [tts|stt|diarize] [args...]")
+        print("   Usage: voxbox [tts|stt|diarize|aai|el11] [args...]")
         print("   Or:    voxbox            (launches GUI)")
         print("   Or:    voxbox --cli      (text-mode interactive menu)")
         sys.exit(1)

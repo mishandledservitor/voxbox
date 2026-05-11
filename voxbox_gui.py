@@ -61,6 +61,22 @@ MODES = {
         "input_exts": AUDIO_EXTS,
         "output_ext": "txt",
     },
+    "aai": {
+        "label": "Transcribe (Cloud · AssemblyAI)",
+        "emoji": "☁️",
+        "description": "Fast cloud transcription with optional speaker labels",
+        "launcher": os.path.join(SCRIPT_DIR, "assemblyai-stt", "assemblyai"),
+        "input_exts": AUDIO_EXTS,
+        "output_ext": "txt",
+    },
+    "el11": {
+        "label": "Transcribe (Cloud · ElevenLabs · highest quality)",
+        "emoji": "✨",
+        "description": "Best-in-class cloud transcription via ElevenLabs Scribe",
+        "launcher": os.path.join(SCRIPT_DIR, "speech-to-text", "elevenlabs"),
+        "input_exts": AUDIO_EXTS,
+        "output_ext": "txt",
+    },
 }
 
 VOICES = {
@@ -88,6 +104,40 @@ FORMAT_EXT = {"text": "txt", "srt": "srt", "vtt": "vtt", "json": "json"}
 # Regex matches the existing whisper/kokoro progress format:
 #   ┃████████░░░░┃ 60% 2m30s ~1m40s left
 PROGRESS_RE = re.compile(r"(\d{1,3})%\s+\S+\s+~?(\S+)\s+left")
+
+# AssemblyAI stage markers — the Python script emits "stage: <name>" lines.
+AAI_STAGES = [
+    ("stage: uploading",   5,  "uploading audio..."),
+    ("stage: queued",     15,  "queued on AssemblyAI..."),
+    ("stage: processing", 35,  "transcribing..."),
+    ("stage: finalizing", 95,  "finalizing..."),
+    ("stage: done",      100,  "done"),
+]
+
+
+def parse_aai_stage(line):
+    for marker, pct, label in AAI_STAGES:
+        if marker in line:
+            return pct, label
+    return None
+
+
+# ElevenLabs Scribe — synchronous API, so we just emit coarse milestones.
+EL11_STAGES = [
+    ("stage: uploading",   5,  "preparing audio..."),
+    ("stage: queued",     15,  "uploading to ElevenLabs..."),
+    ("stage: processing", 30,  "transcribing (Scribe)..."),
+    ("stage: finalizing", 95,  "formatting transcript..."),
+    ("stage: done",      100,  "done"),
+]
+
+
+def parse_el11_stage(line):
+    for marker, pct, label in EL11_STAGES:
+        if marker in line:
+            return pct, label
+    return None
+
 
 # whisper-diarize doesn't print percentages — just stage markers. Map them to
 # coarse progress so the bar visibly moves through the pipeline. Order matters
@@ -208,6 +258,22 @@ class Worker(threading.Thread):
                 cmd += ["--min-speakers", str(n), "--max-speakers", str(n)]
             cmd += [input_path]
             return cmd
+        elif m == "aai":
+            cmd = [launcher, "-f", s["format"], "-o", output_path, "--no-print"]
+            if s.get("speakers"):
+                cmd += ["--speakers"]
+            if s.get("language"):
+                cmd += ["-l", s["language"]]
+            cmd += [input_path]
+            return cmd
+        elif m == "el11":
+            cmd = [launcher, "-f", s["format"], "-o", output_path, "--no-print"]
+            if s.get("speakers"):
+                cmd += ["--speakers"]
+            if s.get("language"):
+                cmd += ["-l", s["language"]]
+            cmd += [input_path]
+            return cmd
         raise ValueError(f"Unknown mode: {m}")
 
     def run(self):
@@ -266,6 +332,16 @@ class Worker(threading.Thread):
                             self.q.put(("progress", pct, eta))
                         elif self.mode == "diarize":
                             stage = parse_diarize_stage(piece)
+                            if stage:
+                                pct, label = stage
+                                self.q.put(("stage", pct, label))
+                        elif self.mode == "aai":
+                            stage = parse_aai_stage(piece)
+                            if stage:
+                                pct, label = stage
+                                self.q.put(("stage", pct, label))
+                        elif self.mode == "el11":
+                            stage = parse_el11_stage(piece)
                             if stage:
                                 pct, label = stage
                                 self.q.put(("stage", pct, label))
@@ -552,6 +628,55 @@ class VoxBoxGUI:
             getters["fixed_speakers"] = lambda: (
                 spk_n_var.get() if spk_mode_var.get() == "fixed" else None
             )
+
+            row = ttk.Frame(opts_frame); row.pack(fill=tk.X, pady=4)
+            ttk.Label(row, text="Output format:", width=12, anchor=tk.W).pack(side=tk.LEFT)
+            fmt_var = tk.StringVar(value="text")
+            for fmt in OUTPUT_FORMATS:
+                ttk.Radiobutton(row, text=fmt, value=fmt,
+                                variable=fmt_var).pack(side=tk.LEFT, padx=4)
+            getters["format"] = lambda: fmt_var.get()
+
+        elif mode_key == "aai":
+            row = ttk.Frame(opts_frame); row.pack(fill=tk.X, pady=4)
+            ttk.Label(row, text="Speakers:", width=12, anchor=tk.W).pack(side=tk.LEFT)
+            spk_var = tk.BooleanVar(value=False)
+            ttk.Checkbutton(row, text="Label who said what",
+                            variable=spk_var).pack(side=tk.LEFT)
+            getters["speakers"] = lambda: spk_var.get()
+
+            row = ttk.Frame(opts_frame); row.pack(fill=tk.X, pady=4)
+            ttk.Label(row, text="Language:", width=12, anchor=tk.W).pack(side=tk.LEFT)
+            lang_var = tk.StringVar(value="")
+            lang_entry = ttk.Entry(row, textvariable=lang_var, width=10)
+            lang_entry.pack(side=tk.LEFT)
+            ttk.Label(row, text="  (blank = auto-detect, e.g. en, ja, es)",
+                      style="Sub.TLabel").pack(side=tk.LEFT)
+            getters["language"] = lambda: lang_var.get().strip() or None
+
+            row = ttk.Frame(opts_frame); row.pack(fill=tk.X, pady=4)
+            ttk.Label(row, text="Output format:", width=12, anchor=tk.W).pack(side=tk.LEFT)
+            fmt_var = tk.StringVar(value="text")
+            for fmt in OUTPUT_FORMATS:
+                ttk.Radiobutton(row, text=fmt, value=fmt,
+                                variable=fmt_var).pack(side=tk.LEFT, padx=4)
+            getters["format"] = lambda: fmt_var.get()
+
+        elif mode_key == "el11":
+            row = ttk.Frame(opts_frame); row.pack(fill=tk.X, pady=4)
+            ttk.Label(row, text="Speakers:", width=12, anchor=tk.W).pack(side=tk.LEFT)
+            spk_var = tk.BooleanVar(value=True)
+            ttk.Checkbutton(row, text="Label who said what",
+                            variable=spk_var).pack(side=tk.LEFT)
+            getters["speakers"] = lambda: spk_var.get()
+
+            row = ttk.Frame(opts_frame); row.pack(fill=tk.X, pady=4)
+            ttk.Label(row, text="Language:", width=12, anchor=tk.W).pack(side=tk.LEFT)
+            lang_var = tk.StringVar(value="")
+            ttk.Entry(row, textvariable=lang_var, width=10).pack(side=tk.LEFT)
+            ttk.Label(row, text="  (blank = auto-detect, ISO-639 e.g. eng, fra, jpn)",
+                      style="Sub.TLabel").pack(side=tk.LEFT)
+            getters["language"] = lambda: lang_var.get().strip() or None
 
             row = ttk.Frame(opts_frame); row.pack(fill=tk.X, pady=4)
             ttk.Label(row, text="Output format:", width=12, anchor=tk.W).pack(side=tk.LEFT)

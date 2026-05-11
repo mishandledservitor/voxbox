@@ -8,3 +8,6 @@
 [submodule "whisper-diarize"]
 	path = whisper-diarize
 	url = https://github.com/mishandledservitor/whisper-diarize.git
+[submodule "speech-to-text"]
+	path = speech-to-text
+	url = https://github.com/mishandledservitor/speech-to-text.git
