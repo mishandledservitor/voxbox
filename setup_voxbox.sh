@@ -19,7 +19,7 @@ echo "   Install directory: $INSTALL_DIR"
 echo ""
 
 # ── 1. Init submodules ──────────────────────────────────────────────────────
-echo "🔍 Step 1/4: Initializing submodules..."
+echo "🔍 Step 1/6: Initializing submodules..."
 if [ -f "$INSTALL_DIR/.gitmodules" ]; then
     git submodule update --init --recursive
     echo "   ✅ Submodules ready"
@@ -35,10 +35,36 @@ else
     fi
 fi
 
-# ── 2. Set up Kokoro TTS ───────────────────────────────────────────────────
+# ── 2. Ensure Tkinter is available (the GUI needs it) ──────────────────────
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo "🎙  Step 2/4: Setting up Kokoro TTS..."
+echo "🪟  Step 2/6: Checking Tkinter (required for the GUI)..."
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+if python3 -c "import tkinter" 2>/dev/null; then
+    echo "   ✅ tkinter available"
+else
+    echo "   ⚠  tkinter missing — the voxbox GUI will fail to launch."
+    if command -v brew &>/dev/null; then
+        PY_MM=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+        TK_FORMULA="python-tk@${PY_MM}"
+        echo "   📦 Installing ${TK_FORMULA} via Homebrew..."
+        if brew install "$TK_FORMULA"; then
+            echo "   ✅ ${TK_FORMULA} installed"
+        else
+            echo "   ⚠  Could not install ${TK_FORMULA}. The GUI will not work until you"
+            echo "      install Tk for your Python (e.g. 'brew install python-tk@${PY_MM}')."
+            echo "      The CLI (./voxbox --cli, ./voxbox tts/stt …) will still work."
+        fi
+    else
+        echo "   ⚠  Homebrew not found — please install Tk for your Python manually."
+    fi
+fi
+
+# ── 3. Set up Kokoro TTS ───────────────────────────────────────────────────
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo "🎙  Step 3/6: Setting up Kokoro TTS..."
 echo "═══════════════════════════════════════════════════════════"
 echo ""
 
@@ -51,10 +77,10 @@ else
     echo "   ⚠  kokoro-tts/setup_kokoro.sh not found — skipping"
 fi
 
-# ── 3. Set up Whisper STT ──────────────────────────────────────────────────
+# ── 4. Set up Whisper STT ──────────────────────────────────────────────────
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo "🎤  Step 3/4: Setting up Whisper STT..."
+echo "🎤  Step 4/6: Setting up Whisper STT..."
 echo "═══════════════════════════════════════════════════════════"
 echo ""
 
@@ -67,10 +93,40 @@ else
     echo "   ⚠  whisper-stt/setup_whisper.sh not found — skipping"
 fi
 
-# ── 4. Optionally set up Whisper Diarize ───────────────────────────────────
+# ── 5. Set up cloud STT (AssemblyAI + ElevenLabs) ──────────────────────────
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo "👥  Step 4/4: Whisper Diarize (optional, ~4 GB disk)"
+echo "☁️   Step 5/6: Setting up cloud STT (AssemblyAI + ElevenLabs)..."
+echo "═══════════════════════════════════════════════════════════"
+echo ""
+
+if [ -f "$INSTALL_DIR/assemblyai-stt/setup_assemblyai.sh" ]; then
+    chmod +x "$INSTALL_DIR/assemblyai-stt/setup_assemblyai.sh"
+    cd "$INSTALL_DIR/assemblyai-stt"
+    ./setup_assemblyai.sh
+    cd "$INSTALL_DIR"
+else
+    echo "   ⚠  assemblyai-stt/setup_assemblyai.sh not found — skipping"
+fi
+
+if [ -f "$INSTALL_DIR/speech-to-text/setup_elevenlabs.sh" ]; then
+    chmod +x "$INSTALL_DIR/speech-to-text/setup_elevenlabs.sh"
+    cd "$INSTALL_DIR/speech-to-text"
+    ./setup_elevenlabs.sh
+    cd "$INSTALL_DIR"
+else
+    echo "   ⚠  speech-to-text/setup_elevenlabs.sh not found — skipping"
+fi
+
+echo ""
+echo "   ℹ  Cloud tools need API keys in .env files (gitignored):"
+echo "      assemblyai-stt/.env    →  ASSEMBLYAI_API_KEY=..."
+echo "      speech-to-text/.env    →  ELEVENLABS_API_KEY=..."
+
+# ── 6. Optionally set up Whisper Diarize ───────────────────────────────────
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo "👥  Step 6/6: Whisper Diarize (optional, ~4 GB disk)"
 echo "═══════════════════════════════════════════════════════════"
 echo ""
 echo "   Adds speaker identification using WhisperX + pyannote 3.1."

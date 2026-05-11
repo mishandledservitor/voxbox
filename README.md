@@ -2,7 +2,7 @@
 
 > Text-to-speech, speech-to-text, and speaker diarization — fully offline. No cloud, no API keys.
 
-**Version 1.3.1** | [Changelog](CHANGELOG.md) | [License](LICENSE)
+**Version 1.4.0** | [Changelog](CHANGELOG.md) | [License](LICENSE)
 
 ```
 voxbox/
@@ -84,12 +84,16 @@ chmod +x setup_voxbox.sh
 ./setup_voxbox.sh
 ```
 
-The setup script handles everything in four steps:
+The setup script handles everything in six steps:
 
-1. **Initializes git submodules** — pulls kokoro-tts, whisper-stt, and whisper-diarize repos
-2. **Sets up Kokoro TTS** — Python venv, kokoro-onnx, ffmpeg, model download (~300 MB)
-3. **Sets up Whisper STT** — Python venv, faster-whisper, model download (~460 MB)
-4. **Sets up Whisper Diarize** *(opt-in)* — Python venv, PyTorch 2.2.2, pyannote 3.1, Whisper medium (~4 GB total). You'll be prompted for a Hugging Face token.
+1. **Initializes git submodules** — pulls all five submodules
+2. **Checks Tkinter** — Python 3.14 from Homebrew ships *without* `tkinter`, so the GUI fails to launch out of the box. Setup probes `import tkinter` and runs `brew install python-tk@<X.Y>` for the active Python if missing (skippable; the CLI still works without it).
+3. **Sets up Kokoro TTS** — Python venv, kokoro-onnx, ffmpeg, model download (~300 MB)
+4. **Sets up Whisper STT** — Python venv, faster-whisper, model download (~460 MB)
+5. **Sets up cloud STT** — venv + SDK for `assemblyai-stt` and `speech-to-text` (ElevenLabs Scribe). Both need API keys in their respective `.env` files (gitignored):
+   - `assemblyai-stt/.env` → `ASSEMBLYAI_API_KEY=...`
+   - `speech-to-text/.env` → `ELEVENLABS_API_KEY=...`
+6. **Sets up Whisper Diarize** *(opt-in)* — Python venv, PyTorch 2.2.2, pyannote 3.1, Whisper medium (~4 GB total). You'll be prompted for a Hugging Face token.
 
 Each tool is fully self-contained in its own directory with its own Python virtual environment.
 
@@ -120,7 +124,7 @@ The GUI has four screens:
 
 Drop input files into `inbox/` (text for TTS, audio for STT/Diarize). Outputs land in `output/`. Originals move to `processed/` after success.
 
-The GUI uses Tkinter (built into Python — no extra install needed). Per-tool inboxes (`whisper-stt/inbox/`, `whisper-diarize/inbox/`) still work for CLI users.
+The GUI uses Tkinter. **Note for Homebrew Python 3.14:** Tk is *not* bundled — `setup_voxbox.sh` installs `python-tk@<X.Y>` automatically; if you're managing Python yourself, run `brew install python-tk@3.14` (or whichever minor version matches `python3 --version`). Per-tool inboxes (`whisper-stt/inbox/`, `whisper-diarize/inbox/`) still work for CLI users.
 
 ### Unified Launcher (CLI)
 
@@ -316,16 +320,32 @@ voxbox/                          # Parent repo (unified launcher)
 │   ├── processed/               # Originals moved here after transcription
 │   └── venv/                    # Isolated Python environment
 │
-└── whisper-diarize/             # Git submodule — STT + speaker diarization (optional)
-    ├── whisper_diarize_local.py # WhisperX + pyannote pipeline (684 lines)
-    ├── whisper-diarize          # Generated bash launcher
-    ├── setup_whisper_diarize.sh # Installer (Python 3.10, PyTorch 2.2.2, pyannote)
-    ├── uninstall_whisper_diarize.sh
-    ├── .hf_token                # HuggingFace token (chmod 600, not tracked)
-    ├── inbox/                   # Drop audio files here for batch processing
-    ├── output/                  # Diarized transcripts saved here
-    ├── processed/               # Originals moved here after success
-    └── venv/                    # Isolated Python 3.10 environment (~2.5 GB)
+├── whisper-diarize/             # Git submodule — STT + speaker diarization (optional)
+│   ├── whisper_diarize_local.py # WhisperX + pyannote pipeline (684 lines)
+│   ├── whisper-diarize          # Generated bash launcher
+│   ├── setup_whisper_diarize.sh # Installer (Python 3.10, PyTorch 2.2.2, pyannote)
+│   ├── uninstall_whisper_diarize.sh
+│   ├── .hf_token                # HuggingFace token (chmod 600, not tracked)
+│   ├── inbox/                   # Drop audio files here
+│   ├── output/                  # Diarized transcripts saved here
+│   ├── processed/               # Originals moved here after success
+│   └── venv/                    # Isolated Python 3.10 environment (~2.5 GB)
+│
+├── assemblyai-stt/              # Git submodule — cloud STT via AssemblyAI
+│   ├── assemblyai_stt.py        # Thin SDK wrapper with text/srt/vtt/json output
+│   ├── assemblyai               # Generated bash launcher
+│   ├── setup_assemblyai.sh      # Installer (creates venv, installs SDK)
+│   ├── .env                     # ASSEMBLYAI_API_KEY=... (gitignored)
+│   └── venv/                    # Isolated Python environment
+│
+└── speech-to-text/              # Git submodule — cloud STT via ElevenLabs Scribe
+    ├── elevenlabs_stt.py        # Generic CLI (matches assemblyai_stt.py interface)
+    ├── elevenlabs               # Generated bash launcher
+    ├── transcribe.py            # Higher-level TTRPG transcription pipeline
+    ├── transcribe_generic.py    # Higher-level generic transcription pipeline
+    ├── setup_elevenlabs.sh      # Installer (creates venv, installs SDK)
+    ├── .env                     # ELEVENLABS_API_KEY=... (gitignored)
+    └── venv/                    # Isolated Python environment
 ```
 
 ### Design Decisions
@@ -473,7 +493,7 @@ Each submodule carries its own LICENSE file with attribution for its specific de
 
 ## Versioning
 
-This project uses [Semantic Versioning](https://semver.org/). Each repo (parent + 3 submodules) is versioned independently:
+This project uses [Semantic Versioning](https://semver.org/). Each repo (parent + 5 submodules) is versioned independently:
 
 | Repo | Current | Changelog |
 |------|---------|-----------|
@@ -481,5 +501,7 @@ This project uses [Semantic Versioning](https://semver.org/). Each repo (parent 
 | kokoro-tts | [VERSION](kokoro-tts/VERSION) | [CHANGELOG.md](kokoro-tts/CHANGELOG.md) |
 | whisper-stt | [VERSION](whisper-stt/VERSION) | [CHANGELOG.md](whisper-stt/CHANGELOG.md) |
 | whisper-diarize | [VERSION](whisper-diarize/VERSION) | [CHANGELOG.md](whisper-diarize/CHANGELOG.md) |
+| assemblyai-stt | (unversioned) | — |
+| speech-to-text | (unversioned) | — |
 
 Parent-repo bumps generally happen alongside changes that affect the launcher (`voxbox_cli.py`, `voxbox_gui.py`, `setup_voxbox.sh`) or cross-tool documentation. Submodule-only changes don't necessarily trigger a parent bump — but the parent's submodule pointer is updated to track the new commit.
