@@ -30,3 +30,11 @@ processed/*
 !inbox/.gitkeep
 !output/.gitkeep
 !processed/.gitkeep
+
+# Shortlisted Call Transcriber drop-folders (keep dirs, ignore files)
+shortlisted/inbox/*
+shortlisted/output/*
+shortlisted/processed/*
+!shortlisted/inbox/.gitkeep
+!shortlisted/output/.gitkeep
+!shortlisted/processed/.gitkeep

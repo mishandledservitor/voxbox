@@ -2,7 +2,7 @@
 
 > Text-to-speech, speech-to-text, and speaker diarization — fully offline. No cloud, no API keys.
 
-**Version 1.4.0** | [Changelog](CHANGELOG.md) | [License](LICENSE)
+**Version 1.5.0** | [Changelog](CHANGELOG.md) | [License](LICENSE)
 
 ```
 voxbox/
@@ -28,6 +28,7 @@ The two core tools (`kokoro-tts`, `whisper-stt`) stay PyTorch-free. The optional
 - [Kokoro TTS](#kokoro-tts)
 - [Whisper STT](#whisper-stt)
 - [Whisper Diarize](#whisper-diarize)
+- [Shortlisted Call Transcriber](#shortlisted-call-transcriber)
 - [Architecture](#architecture)
   - [Project Structure](#project-structure)
   - [Design Decisions](#design-decisions)
@@ -282,6 +283,31 @@ See [whisper-diarize/README.md](whisper-diarize/README.md) for the HF token setu
 
 ---
 
+## Shortlisted Call Transcriber
+
+A standalone GUI + CLI for transcribing client calls via **ElevenLabs Scribe**, living in `shortlisted/`. It is **not** part of the main `./voxbox` launcher — it ships and launches independently, but reuses the `speech-to-text/venv` so the `elevenlabs` SDK is shared rather than installed twice.
+
+```bash
+./shortlisted/shortlisted          # GUI
+./shortlisted/shortlisted-stt -h   # CLI
+```
+
+| Feature | Details |
+|---------|---------|
+| Backend | ElevenLabs Scribe (cloud — needs `ELEVENLABS_API_KEY`) |
+| Models | `scribe_v1` (stable) / `scribe_v1_experimental` |
+| Diarization | on/off, `num_speakers` auto or fixed (1–32), tunable threshold |
+| Speaker labels | map `0=Simon,1=Client` style |
+| Output formats | text / srt / vtt / json, optional inline `[hh:mm:ss]` prefixes |
+| Defaults | tuned for 2-speaker client calls |
+| Workflow | drop files in `shortlisted/inbox/` → `shortlisted/output/`; originals move to `shortlisted/processed/` |
+
+**Setup (one-time):** if `speech-to-text/venv` doesn't exist yet, run `speech-to-text/setup_elevenlabs.sh`, then put your key in `speech-to-text/.env` (gitignored) or export `ELEVENLABS_API_KEY`.
+
+See [shortlisted/README.md](shortlisted/README.md) for every exposed Scribe option and the full workflow.
+
+---
+
 ## Architecture
 
 ### Project Structure
@@ -300,6 +326,14 @@ voxbox/                          # Parent repo (unified launcher)
 ├── inbox/                       # GUI input drop folder (text or audio)
 ├── output/                      # GUI output folder
 ├── processed/                   # Originals moved here after GUI success
+│
+├── shortlisted/                 # Standalone ElevenLabs Scribe call transcriber (not a submodule)
+│   ├── shortlisted_gui.py       # GUI exposing every Scribe option
+│   ├── shortlisted_stt.py       # CLI (reuses speech-to-text/venv)
+│   ├── shortlisted              # GUI launcher
+│   ├── shortlisted-stt          # CLI launcher
+│   ├── inbox/ output/ processed/  # Drop-folder workflow
+│   └── README.md
 │
 ├── kokoro-tts/                  # Git submodule — text-to-speech
 │   ├── kokoro_tts_local.py      # TTS engine (438 lines)
