@@ -1,0 +1,19 @@
+# Per-project registry + settings (personal keyterms / labels — local state)
+projects.json
+config/*.json
+*.corrupt-*
+*.lock
+*.tmp.*
+
+# Drop-folders (keep dirs, ignore contents)
+inbox/*
+processed/*
+output/*
+!inbox/.gitkeep
+!processed/.gitkeep
+!output/.gitkeep
+
+# Local environment / caches
+.env
+__pycache__/
+*.pyc

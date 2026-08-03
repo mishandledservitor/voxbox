@@ -1,0 +1,10 @@
+#!/bin/bash
+# CLI launcher — reuses the speech-to-text venv (elevenlabs SDK lives there).
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VENV="$SCRIPT_DIR/../speech-to-text/venv"
+if [ ! -d "$VENV" ]; then
+    echo "⚠  speech-to-text venv missing. Run voxbox/speech-to-text/setup_elevenlabs.sh first." >&2
+    exit 1
+fi
+source "$VENV/bin/activate"
+exec python "$SCRIPT_DIR/projects_stt.py" "$@"
