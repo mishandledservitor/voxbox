@@ -46,7 +46,9 @@ Then add your API key to `../speech-to-text/.env` (or export
 Everything in the options panel plus keyterms, in `config/<slug>.json`:
 
 - **keyterms** — comma/newline list biasing recognition (character, place,
-  jargon names). Scribe caps this at 1000 terms, ≤5 words each.
+  jargon names). ≤5 words and ≤50 chars per term. Scribe accepts up to 1000
+  terms, but keep it to **100 or fewer** — over 100 triggers a 20-second
+  minimum billable duration per request.
 - **model** — `scribe_v2` (best) / `scribe_v1`
 - **language** — auto-detect or an ISO-639 code
 - **diarize** + **speaker count** (auto / fixed 1–32) + **sensitivity**

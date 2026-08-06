@@ -11,6 +11,15 @@ For changes to individual tools, see:
 
 ---
 
+## [Unreleased]
+
+### Changed
+- **Keyterm limits documented consistently across all six places that mention them.** They previously disagreed — `speech-to-text/config.yaml` said 100 while `config_generic.yaml`, `speech-to-text/README.md`, `projects/README.md` and both `--keyterms` CLI help strings said 1000 — and none explained the difference. Per the ElevenLabs docs, Scribe v2 batch accepts up to **1000** terms (≤5 words, ≤50 chars each), but requests with **more than 100 keyterms incur a 20-second minimum billable duration**, so short clips get billed as 20s. **100 is therefore a deliberate cost cap, not an API limit**, and every location now says so.
+  - Note: nothing enforces the 100 cap in code. `transcribe.py` / `transcribe_generic.py` truncate at `[:1000]` (the API ceiling); `projects/` and `shortlisted/` don't truncate at all. A list that drifts past 100 will cross the billing threshold silently.
+
+### Changed (submodules)
+- **`speech-to-text`** → `a6debf3` — the keyterm documentation fix above.
+
 ## [1.5.0] — 2026-08-06
 
 ### Added
@@ -31,7 +40,7 @@ For changes to individual tools, see:
 - **`.gitignore`** now also keeps the Shortlisted drop-folders (`shortlisted/inbox`, `shortlisted/output`, `shortlisted/processed`) while ignoring their contents, mirroring the root drop-folder convention (`.gitkeep` exemptions).
 
 ### Changed (submodules)
-- **`speech-to-text`** → `5d94b5a` — refreshed Scribe keyterms for the current campaign (new PCs/NPCs, factions, locations; stale entries dropped) and corrected the documented keyterm limit in `config.yaml` from 1000 to **100** terms.
+- **`speech-to-text`** → `5d94b5a` — refreshed Scribe keyterms for the current campaign (new PCs/NPCs, factions, locations; stale entries dropped) and capped the documented keyterm list in `config.yaml` at **100** terms. (100 is a deliberate billing cap, not the API limit — see Unreleased below.)
 - **`kokoro-tts`** → `16cc0ce` — stop tracking `.DS_Store`.
 
 Both submodule commits are published on their remotes, so these gitlinks resolve on a fresh clone.

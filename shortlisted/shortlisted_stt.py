@@ -340,7 +340,7 @@ def main():
                    help="Strip filler words / false starts (scribe_v2 only)")
     p.add_argument("--detect-speaker-roles", action="store_true",
                    help="Label speakers as 'agent' / 'customer' (requires diarize)")
-    p.add_argument("--keyterms", help="Comma list of keyterms to bias toward (max 1000, ≤5 words each)")
+    p.add_argument("--keyterms", help="Comma list of keyterms to bias toward (≤5 words each; keep to 100 or fewer — over 100 bills a 20s minimum per request)")
     p.add_argument("--temperature", type=float, help="0.0–2.0 (default: model default)")
     p.add_argument("--seed", type=int, help="Best-effort deterministic sampling seed")
     p.add_argument("--labels", help="Comma list mapping speaker ids: '0=Simon,1=Client'")
