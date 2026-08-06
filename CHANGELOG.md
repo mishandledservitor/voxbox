@@ -11,9 +11,15 @@ For changes to individual tools, see:
 
 ---
 
-## [1.5.0] — 2026-06-04
+## [1.5.0] — 2026-08-06
 
 ### Added
+- **Project Transcriber** (`projects/`) — a project-selectable GUI + CLI for ElevenLabs Scribe where **each project carries its own keyterms and Scribe settings**. Pick a project (a TTRPG campaign, a client, a podcast) and its keyword list, speaker labels, diarization defaults and output format load in. Domain-agnostic counterpart to the fixed-purpose `shortlisted/` tool:
+  - `projects/projects` — GUI launcher (`projects_gui.py`); `projects/projects-stt` — CLI launcher (`projects_stt.py`).
+  - Self-contained, but shares the `speech-to-text/venv` for the `elevenlabs` SDK.
+  - Transcripts land in `output/<project>/`; source audio moves to the shared `processed/`.
+  - Project registry (`projects.json`) and per-project settings (`config/<slug>.json`) are **local state and gitignored** — they can hold private campaign/client names. A fresh clone seeds a single default **General** project.
+  - See [projects/README.md](projects/README.md) for the full option list.
 - **Shortlisted Call Transcriber** (`shortlisted/`) — a standalone GUI + CLI for transcribing client calls via ElevenLabs Scribe, with every relevant Scribe API option exposed (model, language, diarization, `num_speakers`, `diarization_threshold`, speaker-label mapping, audio-event tagging, timestamp granularity, output format, inline `[hh:mm:ss]` prefixes). Built alongside VoxBox but launches independently:
   - `shortlisted/shortlisted` — GUI launcher (`shortlisted_gui.py`).
   - `shortlisted/shortlisted-stt` — CLI launcher (`shortlisted_stt.py`); reuses the `speech-to-text/venv` so the `elevenlabs` SDK is shared rather than duplicated.
@@ -24,8 +30,11 @@ For changes to individual tools, see:
 ### Changed
 - **`.gitignore`** now also keeps the Shortlisted drop-folders (`shortlisted/inbox`, `shortlisted/output`, `shortlisted/processed`) while ignoring their contents, mirroring the root drop-folder convention (`.gitkeep` exemptions).
 
-### Notes
-- The `speech-to-text` submodule has a local-only refresh of `config.yaml` (Scribe keyterms updated for the current campaign; documented limit corrected from 1000 to 100). That commit is **not yet pushed** to the submodule remote, so the parent gitlink is intentionally left pointing at the previously published commit to avoid a dangling pointer.
+### Changed (submodules)
+- **`speech-to-text`** → `5d94b5a` — refreshed Scribe keyterms for the current campaign (new PCs/NPCs, factions, locations; stale entries dropped) and corrected the documented keyterm limit in `config.yaml` from 1000 to **100** terms.
+- **`kokoro-tts`** → `16cc0ce` — stop tracking `.DS_Store`.
+
+Both submodule commits are published on their remotes, so these gitlinks resolve on a fresh clone.
 
 ## [1.4.0] — 2026-05-11
 
