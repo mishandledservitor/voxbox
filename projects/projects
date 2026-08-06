@@ -1,0 +1,4 @@
+#!/bin/bash
+# GUI launcher for the Project Transcriber.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec python3 "$SCRIPT_DIR/projects_gui.py" "$@"

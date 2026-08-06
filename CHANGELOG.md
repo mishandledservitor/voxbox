@@ -11,6 +11,22 @@ For changes to individual tools, see:
 
 ---
 
+## [1.5.0] — 2026-06-04
+
+### Added
+- **Shortlisted Call Transcriber** (`shortlisted/`) — a standalone GUI + CLI for transcribing client calls via ElevenLabs Scribe, with every relevant Scribe API option exposed (model, language, diarization, `num_speakers`, `diarization_threshold`, speaker-label mapping, audio-event tagging, timestamp granularity, output format, inline `[hh:mm:ss]` prefixes). Built alongside VoxBox but launches independently:
+  - `shortlisted/shortlisted` — GUI launcher (`shortlisted_gui.py`).
+  - `shortlisted/shortlisted-stt` — CLI launcher (`shortlisted_stt.py`); reuses the `speech-to-text/venv` so the `elevenlabs` SDK is shared rather than duplicated.
+  - Defaults tuned for 2-speaker client calls (diarization on, `num_speakers=2`, labels `0=Simon,1=Client`, audio events off, word-level timestamps).
+  - Same drop-folder workflow as the main app: `shortlisted/inbox/` → `shortlisted/output/`, originals moved to `shortlisted/processed/`.
+  - See [shortlisted/README.md](shortlisted/README.md) for setup and the full option list.
+
+### Changed
+- **`.gitignore`** now also keeps the Shortlisted drop-folders (`shortlisted/inbox`, `shortlisted/output`, `shortlisted/processed`) while ignoring their contents, mirroring the root drop-folder convention (`.gitkeep` exemptions).
+
+### Notes
+- The `speech-to-text` submodule has a local-only refresh of `config.yaml` (Scribe keyterms updated for the current campaign; documented limit corrected from 1000 to 100). That commit is **not yet pushed** to the submodule remote, so the parent gitlink is intentionally left pointing at the previously published commit to avoid a dangling pointer.
+
 ## [1.4.0] — 2026-05-11
 
 ### Added
